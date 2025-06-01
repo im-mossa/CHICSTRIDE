@@ -1,0 +1,8 @@
+Copyright (c) ۲۰۲۵ muhammad saeed saeedyan
+
+All Rights Reserved.
+
+No part of this repository (code, documentation, etc.) may be copied, modified, distributed, or published without the express written permission of the copyright holder. If you wish to use or customize this content, you must contact the author/copyright holder to purchase or obtain the necessary license.
+To obtain permission to use or edit, contact us via email at ssaeedyan@gmail.com.
+
+هیچ‌یک از بخش‌های این مخزن (کدها، مستندات و غیره) بدون کسب مجوز کتبی از صاحب اثر حق کپی‌برداری، تغییر، توزیع یا انتشار ندارد. در صورت تمایل به استفاده یا سفارشی‌سازی این محتوا، باید با نگارنده/صاحب اثر تماس بگیرید تا مجوز لازم را خریداری یا دریافت کنید.

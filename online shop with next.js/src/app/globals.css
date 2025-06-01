@@ -1,0 +1,59 @@
+/* globals.css */
+@import "tailwindcss";
+
+/* ۲. انیمیشن ناوبری */
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.7s ease-out forwards;
+}
+
+/* ۳. تعریف متغیرهای رنگی برای لایت مود */
+:root {
+  --background: #f3f4f6 ;
+  --background2: #fff;
+  --foreground: #000000;
+}
+
+/* ۴. وقتی کلاس dark روی html ست باشد */
+/*   کاربر حالت دارک را انتخاب کرده */
+html.dark {
+  --background: #101828;
+  --background2: #364153;
+  /* معادل bg-gray-900 */
+  --foreground: #e5e7eb;
+  /* معادل text-gray-200 */
+}
+
+/* ۵. فونت سفارشی */
+@font-face {
+  font-family: "Ubuntu";
+  src: url(./font/Ubuntu-Regular.ttf);
+}
+
+/* ۶. اعمال روی body */
+body,
+.home {
+  background-color: var(--background);
+  color: var(--foreground);
+  border: var(--foreground);
+  font-family: "Ubuntu", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.header-section,
+.footer-section {
+  background-color: var(--background2);
+  color: var(--foreground);
+  border: var(--foreground);
+  font-family: "Ubuntu", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
