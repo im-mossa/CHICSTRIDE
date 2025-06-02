@@ -50,10 +50,10 @@ export default function BasketSection() {
   if (items.length === 0) {
     return (
       <section className="p-6 text-center">
-        <h2 className="text-2xl font-bold mb-4">Your basket is empty!</h2>
-        <Button href="/products">
-          Browse Products
-        </Button>
+        <h2 className="text-2xl font-bold py-4">Your basket is empty!</h2>
+        <div className="py-4">
+          <Button href="/products">Browse Products</Button>
+        </div>
       </section>
     );
   }
@@ -123,7 +123,7 @@ export default function BasketSection() {
       </div>
 
       {/* Mobile Cards */}
-      <div className="space-y-4 md:hidden">
+      <div className="space-y-4 md:hidden  text-white dark:text-black">
         {items.map((itm, idx) => (
           <div
             key={idx}
@@ -167,11 +167,11 @@ export default function BasketSection() {
         ))}
       </div>
 
-      <div className="text-right text-xl font-bold mb-4">
+      <div className="text-right text-xl font-bold py-4">
         Total: {total} IRR
       </div>
 
-      <div className="text-center">
+      <div className="text-center py-4">
         <Button href="/checkOut">Proceed To Payment</Button>
       </div>
     </section>
