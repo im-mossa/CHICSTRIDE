@@ -18,11 +18,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" dir="rtl">
-      <body className="transition-colors duration-300">
+      <body>
         {/* نوار ناوبری به صورت fixed */}
         <header
           data-testid="header"
-          className="border-b border-gray-200 fixed top-0 left-0 w-full z-20 transition-transform duration-70 ease-out animate-slide-down"
+          className="border-b border-gray-200 fixed top-0 left-0 w-full z-20 animate-slide-down"
         >
           <nav className="h-20 flex justify-center items-center text-xl header-section">
             <HeaderContent />

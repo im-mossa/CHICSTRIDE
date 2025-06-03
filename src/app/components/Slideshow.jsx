@@ -5,6 +5,24 @@ import Skeleton from "react-loading-skeleton";
 import useSliderApi from "../api/sliderApi";
 import Link from "next/link";
 
+// کامپوننت SlideBox را جدا تعریف می‌کنیم تا هر بار کامپوننت اصلی دوباره تعریف نشود
+const SlideBox = ({ id, image, title, subTitle }) => (
+  <div className="relative flex-shrink-0 w-[80vw] h-[500px] max-[471px]:h-[300px]">
+    <img
+      src={image}
+      alt={title}
+      title={title}
+      className="w-full h-full object-cover"
+    />
+    <div className="absolute top-0 left-0 bg-white/70 backdrop-blur-sm rounded-br-2xl p-4 flex flex-col justify-start items-start z-20 w-[10em] h-[6em]">
+      <Link href={`/showSlider/${id}`}>
+        <h2 className="text-[1em] font-bold text-black">{title}</h2>
+        <p className="mt-2 text-[1em] text-black">{subTitle}</p>
+      </Link>
+    </div>
+  </div>
+);
+
 export default function Slideshow() {
   const { getAll } = useSliderApi();
   const [slides, setSlides] = useState([]);
@@ -15,24 +33,30 @@ export default function Slideshow() {
   useEffect(() => {
     setLoading(true);
     getAll((data) => {
+      // بررسی می‌کنیم که داده دریافتی آرایه باشد
       setSlides(Array.isArray(data) ? data : []);
       setLoading(false);
     });
   }, []);
 
-  // اتوپلی
+  // اتوپلی: تغییر خودکار اسلایدها هر 5 ثانیه
   useEffect(() => {
-    if (slides.length === 0) return;
+    if (!slides.length) return;
     const timeoutId = setTimeout(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
     }, 5000);
+    // پاکسازی تایمر هنگام تغییر وابستگی‌ها
     return () => clearTimeout(timeoutId);
   }, [current, slides.length]);
 
+  // حالت بارگذاری
   if (loading) {
     return (
       <div className="relative w-[80vw] h-[300px] mx-auto overflow-hidden rounded-2xl">
-        <Skeleton className="w-full h-full" containerClassName="leading-none align-top" />
+        <Skeleton
+          className="w-full h-full"
+          containerClassName="leading-none align-top"
+        />
         <div className="absolute align-top top-0 left-0 backdrop-blur-sm rounded-br-2xl p-4 z-10 w-[10em] h-[6em] footer-section">
           <Skeleton width="35%" height={16} />
           <Skeleton width="65%" height={14} className="mt-2" />
@@ -41,26 +65,10 @@ export default function Slideshow() {
     );
   }
 
-  if (slides.length === 0) {
+  // زمانی که داده‌ای برای اسلایدها موجود نباشد
+  if (!slides.length) {
     return <div className="p-6 text-center">No slides available.</div>;
   }
-
-  const SlideBox = ({ id, image, title, subTitle }) => (
-    <div className="relative flex-shrink-0 w-[80vw] h-[500px] max-[471px]:h-[300px]">
-      <img
-        src={image}
-        alt={title}
-        title={title}
-        className="w-full h-full object-cover"
-      />
-      <div className="absolute top-0 left-0 bg-white/70 backdrop-blur-sm rounded-br-2xl p-4 flex flex-col justify-start items-start z-20 w-[10em] h-[6em]">
-        <Link href={`/showSlider/${id}`}>
-          <h2 className="text-[1em] font-bold text-black">{title}</h2>
-          <p className="mt-2 text-[1em] text-black">{subTitle}</p>
-        </Link>
-      </div>
-    </div>
-  );
 
   return (
     <section className="relative overflow-hidden w-[80vw] mx-auto rounded-2xl">
@@ -68,11 +76,17 @@ export default function Slideshow() {
         className="flex transition-transform duration-700 ease-in-out"
         style={{
           width: `${slides.length * 80}vw`,
-          transform: `translateX(+${current * 80}vw)`,
+          transform: `translateX(${current * 80}vw)`, // علامت + اضافه نیست
         }}
       >
         {slides.map(({ id, image, title, subTitle }) => (
-          <SlideBox key={id} id={id} image={image} title={title} subTitle={subTitle} />
+          <SlideBox
+            key={id}
+            id={id}
+            image={image}
+            title={title}
+            subTitle={subTitle}
+          />
         ))}
       </div>
 
