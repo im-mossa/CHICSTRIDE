@@ -1,37 +1,33 @@
-// src/components/EditProfileForm.jsx
+// app/components/EditProfileForm.jsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
-import useUserApi from "../hooks/useUserApi";
-import {
-  getCookie,
-  setCookie,
-  showLoading,
-  showButton,
-} from "../utils/helpers";
+import { cookieUtil, navigationUtil } from "../utils/helpers";
 import Button from "./ui/Button";
+
+// تعریف فیلدهای فرم در یک آرایه برای جلوگیری از تکرار
+const FIELDS = [
+  { label: "First Name", name: "firstName", type: "text" },
+  { label: "Last Name", name: "lastName", type: "text" },
+  { label: "Username", name: "username", type: "text", disabled: true },
+  { label: "Phone", name: "phone", type: "tel" },
+  { label: "Postal Code", name: "postalCode", type: "text" },
+  { label: "Address", name: "address", type: "text" },
+];
 
 export default function EditProfileForm() {
   const router = useRouter();
-  const { editProfile } = useUserApi();
-
-  // state فرم
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    username: "",
-    phone: "",
-    postalCode: "",
-    address: "",
-  });
+  const [formData, setFormData] = useState(
+    FIELDS.reduce((acc, { name }) => ({ ...acc, [name]: "" }), {})
+  );
   const [loading, setLoading] = useState(false);
 
-  // بارگذاری اطلاعات کنونی کاربر و پر کردن فرم
+  // بارگذاری اطلاعات کاربر از کوکی
   useEffect(() => {
-    const json = getCookie("currentUser");
-    if (!json) {
+    const userJson = cookieUtil.get("currentUser");
+    if (!userJson) {
       Swal.fire({
         icon: "error",
         title: "Not logged in",
@@ -40,116 +36,106 @@ export default function EditProfileForm() {
       return;
     }
     try {
-      const u = JSON.parse(json);
-      setFormData({
-        firstName: u.firstName,
-        lastName: u.lastName,
-        username: u.username,
-        phone: u.phone,
-        postalCode: u.postalCode,
-        address: u.address,
-      });
+      const user = JSON.parse(userJson);
+      setFormData((prev) =>
+        FIELDS.reduce(
+          (acc, { name }) => ({ ...acc, [name]: user[name] ?? prev[name] }),
+          {}
+        )
+      );
     } catch {
       router.push("/login");
     }
   }, [router]);
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  // به‌روز رسانی state فرم
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    // اعتبارسنجی ساده
-    for (let key of [
-      "firstName",
-      "lastName",
-      "username",
-      "phone",
-      "postalCode",
-      "address",
-    ]) {
-      if (!formData[key]) {
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "Please fill all fields!",
-        });
-        return;
+  // ارسال داده‌ها به سرور
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      // اعتبارسنجی فیلدها
+      for (const { name } of FIELDS) {
+        if (!formData[name]) {
+          await Swal.fire({
+            icon: "error",
+            title: "Oops...",
+            text: "Please fill all fields!",
+          });
+          return;
+        }
       }
-    }
 
-    const currentUser = JSON.parse(getCookie("currentUser"));
-    const payload = {
-      ...formData,
-      id: currentUser.id,
-      customerId: currentUser.customerId,
-      token: currentUser.token,
-    };
+      const userJson = cookieUtil.get("currentUser");
+      if (!userJson) return router.push("/login");
 
-    setLoading(true);
-    showLoading();
-    try {
-      await editProfile(payload, currentUser.token, (data) => {
-        const updated = Array.isArray(data) ? data[0] : data;
-        // ذخیره در کوکی
-        setCookie("currentUser", JSON.stringify(updated), 5);
-        setCookie("token", updated.token, 5);
-        Swal.fire({ icon: "success", title: "Profile Updated!" }).then(() =>
-          router.push("/login")
-        );
-      });
-    } catch (err) {
-      // خطاها در useUserApi با Swal مدیریت می‌شوند
-    } finally {
-      setLoading(false);
-      showButton();
-    }
-  };
+      const user = JSON.parse(userJson);
+      const payload = { ...formData, id: user.id, customerId: user.customerId };
+
+      setLoading(true);
+      try {
+        const res = await fetch("/api/user/update", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+
+        if (res.ok && json.status === "OK") {
+          await Swal.fire({ icon: "success", title: "Profile updated!" });
+          navigationUtil.logout(router);
+        } else {
+          await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: json.message || `HTTP ${res.status}`,
+          });
+        }
+      } catch (err) {
+        console.error("Edit Profile Error:", err);
+        await Swal.fire({
+          icon: "error",
+          title: "Network Error",
+          text: err.message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [formData, router]
+  );
 
   return (
     <div className="max-w-md mx-auto p-6 my-6 bg-white rounded-lg shadow">
       <h2 className="text-2xl font-bold text-center mb-6">Edit Profile</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {[
-          { label: "First Name", name: "firstName", type: "text" },
-          { label: "Last Name", name: "lastName", type: "text" },
-          { label: "Username", name: "username", type: "text" },
-          { label: "Phone", name: "phone", type: "tel" },
-          { label: "Postal Code", name: "postalCode", type: "text" },
-          { label: "Address", name: "address", type: "text" },
-        ].map(({ label, name, type }) => (
+        {FIELDS.map(({ label, name, type, disabled }) => (
           <div key={name}>
             <label className="block text-sm font-medium text-gray-700">
               {label}
             </label>
-            {name === "username" ? (
-              <div className="relative">
-                <input
-                  id={name}
-                  name={name}
-                  type={type}
-                  value={formData[name]}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring hover:cursor-not-allowed"
-                  required
-                  disabled
-                />
-              </div>
-            ) : (
-              <input
-                id={name}
-                name={name}
-                type={type}
-                value={formData[name]}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring"
-                required
-              />
-            )}
+            <input
+              id={name}
+              name={name}
+              type={type}
+              value={formData[name]}
+              onChange={handleChange}
+              disabled={disabled}
+              className={`mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring ${
+                disabled ? "bg-gray-100 cursor-not-allowed" : ""
+              }`}
+              required
+            />
           </div>
         ))}
-
         <div className="text-center">
           <Button type="submit" disabled={loading}>
             {loading ? "Please wait..." : "Submit"}

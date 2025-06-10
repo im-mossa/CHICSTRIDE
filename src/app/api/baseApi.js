@@ -1,146 +1,93 @@
-// src/hooks/useBaseApi.js
+// app/api/baseApi.js
 import { useCallback } from "react";
 import Swal from "sweetalert2";
 import { getApiURL } from "../api/apiAddress";
-import { showButton, deleteCookie } from "../utils/helpers";
+import { cookieUtil } from "../utils/helpers";
 
 /**
  * Custom hook providing HTTP methods for API interactions
  */
 export function useBaseApi() {
-  const onError = useCallback(() => {
-    Swal.fire({ icon: "error", title: "Oops...", text: "Error on getting information from server!" });
-  }, []);
-
-  const onError2 = useCallback((message) => {
+  const notifyError = useCallback((message = "Error on communicating with server!") => {
     Swal.fire({ icon: "error", title: "Oops...", text: message });
   }, []);
 
-  const onSuccess = useCallback(
+  // Clear authentication cookies
+  const clearAuth = useCallback(() => {
+    cookieUtil.remove('token');
+    cookieUtil.remove('currentUser');
+  }, []);
+
+  // Notify error and clear auth
+  const handleAuthError = useCallback((message = "Authentication failed. Please login again.") => {
+    notifyError(message);
+    clearAuth();
+  }, [notifyError, clearAuth]);
+
+  const handleResponse = useCallback(
     async (response, callback) => {
       const json = await response.json();
-      switch (json.status) {
-        case "OK":
-          callback(json.data);
-          break;
-        case "NOT_FOUND":
-          onError2(json.message);
-          break;
-        default:
-          onError();
+      if (response.ok && json.status === "OK") {
+        callback(json.data);
+      } else if (json.status === "NOT_FOUND") {
+        notifyError(json.message);
+      } else {
+        notifyError();
       }
     },
-    [onError, onError2]
+    [notifyError]
   );
 
-  const getData = useCallback(
-    async (suffix, callback) => {
+  const request = useCallback(
+    async ({ method = 'GET', suffix, data, token, callback, onFailure }) => {
       const url = getApiURL(suffix);
+      const headers = { Accept: "application/json" };
+      if (data) headers['Content-Type'] = "application/json";
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       try {
-        const response = await fetch(url);
-        if (response.ok) onSuccess(response, callback);
-        else onError();
-      } catch {
-        onError();
-      }
-    },
-    [onSuccess, onError]
-  );
-
-  const postData = useCallback(
-    async (suffix, data, callback) => {
-      const url = getApiURL(suffix);
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (response.ok) onSuccess(response, callback);
-        else onError();
-      } catch {
-        onError();
-      }
-      showButton();
-    },
-    [onSuccess, onError]
-  );
-
-  const putDataWithToken = useCallback(
-    async (suffix, data, token, callback) => {
-      const url = getApiURL(suffix);
-      try {
-        const response = await fetch(url, {
-          method: "PUT",
-          headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(data),
-        });
-        if (response.ok) onSuccess(response, callback);
-        else onError();
-      } catch {
-        onError();
-      }
-      showButton();
-    },
-    [onSuccess, onError]
-  );
-
-  const putDataWithToken2 = useCallback(
-    (suffix, data, token, callback) => {
-      const url = getApiURL(suffix);
-      const req = new XMLHttpRequest();
-      req.open("PUT", url, true);
-      req.setRequestHeader("Authorization", `Bearer ${token}`);
-      req.setRequestHeader("Content-Type", "application/json");
-      req.onreadystatechange = () => {
-        if (req.readyState === 4 && req.status === 200) {
-          const json = JSON.parse(req.responseText);
-          callback(json.data);
-        }
-      };
-      req.send(JSON.stringify(data));
-    },
-    []
-  );
-
-  const postDataWithToken = useCallback(
-    async (suffix, data, token, callback) => {
-      const url = getApiURL(suffix);
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(data),
-        });
-        if (response.ok) onSuccess(response, callback);
-        else onError();
-      } catch {
-        onError();
-      }
-      showButton();
-    },
-    [onSuccess, onError]
-  );
-
-  const getDataWithToken = useCallback(
-    async (suffix, token, callback) => {
-      const url = getApiURL(suffix);
-      try {
-        const response = await fetch(url, { method: "GET", headers: { Authorization: `Bearer ${token}` } });
-        if (response.ok) onSuccess(response, callback);
-        else {
-          onError();
-          deleteCookie("token");
-          deleteCookie("currentUser");
+        const response = await fetch(url, { method, headers, body: data ? JSON.stringify(data) : undefined });
+        if (response.ok) {
+          await handleResponse(response, callback);
+        } else if (onFailure) {
+          onFailure();
+        } else {
+          notifyError();
         }
       } catch {
-        onError();
-        deleteCookie("token");
-        deleteCookie("currentUser");
+        if (onFailure) onFailure();
+        else notifyError();
       }
     },
-    [onSuccess, onError]
+    [handleResponse, notifyError]
   );
 
-  return { getData, postData, putDataWithToken, putDataWithToken2, postDataWithToken, getDataWithToken };
+  const getData = useCallback((suffix, callback) => {
+    return request({ suffix, callback });
+  }, [request]);
+
+  const postData = useCallback((suffix, data, callback) => {
+    return request({ method: 'POST', suffix, data, callback });
+  }, [request]);
+
+  const putDataWithToken = useCallback((suffix, data, token, callback) => {
+    return request({ method: 'PUT', suffix, data, token, callback });
+  }, [request]);
+
+  const postDataWithToken = useCallback((suffix, data, token, callback) => {
+    return request({ method: 'POST', suffix, data, token, callback });
+  }, [request]);
+
+  // GET with token: clear auth cookies on error via handleAuthError
+  const getDataWithToken = useCallback((suffix, token, callback) => {
+    return request({
+      method: 'GET',
+      suffix,
+      token,
+      callback,
+      onFailure: () => handleAuthError(),
+    });
+  }, [request, handleAuthError]);
+
+  return { getData, postData, putDataWithToken, postDataWithToken, getDataWithToken };
 }

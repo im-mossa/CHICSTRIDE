@@ -1,81 +1,52 @@
 // src/utils/helpers.js
-import Swal from "sweetalert2";
-
-/**
- * Get query parameter value by name
- */
-export function getParameterByName(name, url = typeof window !== 'undefined' ? window.location.href : '') {
-  name = name.replace(/[\[\]]/g, '\\$&');
-  const regex = new RegExp(`[?&]${name}(=([^&#]*)|&|#|$)`);
-  const results = regex.exec(url);
-  if (!results) return null;
-  if (!results[2]) return '';
-  return decodeURIComponent(results[2].replace(/\+/g, ' '));
-}
 
 /**
  * Cookie utilities
  */
-export function setCookie(cname, cvalue, exdays) {
-  const d = new Date();
-  d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000);
-  document.cookie = `${cname}=${cvalue};expires=${d.toUTCString()};path=/`;
-}
+export const cookieUtil = (() => {
+  const isBrowser = typeof document !== 'undefined';
 
-export function getCookie(cname) {
-  if (typeof document === "undefined") {
-    // در زمان SSR (سرور) document وجود ندارد
-    return "";
-  }
+  const set = (name, value, days = 1, options = {}) => {
+    if (!isBrowser) return;
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    let cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+    // append additional options like secure, sameSite
+    Object.entries(options).forEach(([opt, val]) => {
+      cookie += `; ${opt}` + (val === true ? '' : `=${val}`);
+    });
+    document.cookie = cookie;
+  };
 
-  const name = `${cname}=`;
-  const decodedCookie = decodeURIComponent(document.cookie);
-  const ca = decodedCookie.split(";");
+  const get = (name) => {
+    if (!isBrowser) return '';
+    const encodedName = encodeURIComponent(name) + '=';
+    return document.cookie.split('; ').reduce((res, cookie) => {
+      return cookie.startsWith(encodedName)
+        ? decodeURIComponent(cookie.substring(encodedName.length))
+        : res;
+    }, '');
+  };
 
-  for (let c of ca) {
-    c = c.trim();
-    if (c.indexOf(name) === 0) {
-      return c.substring(name.length);
-    }
-  }
-  return "";
-}
+  const remove = (name) => {
+    if (!isBrowser) return;
+    document.cookie = `${encodeURIComponent(name)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  };
 
-export function deleteCookie(cname) {
-  document.cookie = `${cname}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-}
-
-/**
- * Show and hide loading state
- */
-export function showLoading() {
-  Swal.fire({
-    title: 'Please Wait...!',
-    timer: 2000,
-    timerProgressBar: true,
-    didOpen: () => Swal.showLoading(),
-  }).then(() => { });
-  document.querySelectorAll('.action-btn, .action-btn2').forEach(btn => btn && (btn.style.display = 'none'));
-  const wait = document.querySelector('.please-wait');
-  if (wait) wait.style.display = 'block';
-}
-
-export function showButton() {
-  document.querySelectorAll('.action-btn, .action-btn2').forEach(btn => btn && (btn.style.display = 'block'));
-  const wait = document.querySelector('.please-wait');
-  if (wait) wait.style.display = 'none';
-}
+  return { set, get, remove };
+})();
 
 /**
- * User navigation
+ * Redirect utilities (client-side)
  */
-export function checkUser() {
-  const user = getCookie('currentUser');
-  window.location.href = user ? '/panel' : '/login';
-}
+export const navigationUtil = {
+  requireAuth: (router, redirectTo = '/login', panel = '/panel') => {
+    const user = cookieUtil.get('currentUser');
+    router.push(user ? panel : redirectTo);
+  },
 
-export function logOutSystem() {
-  deleteCookie('currentUser');
-  deleteCookie('token');
-  window.location.href = '/login';
-}
+  logout: (router, redirectTo = '/login') => {
+    cookieUtil.remove('currentUser');
+    cookieUtil.remove('token');
+    router.push(redirectTo);
+  }
+};

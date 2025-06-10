@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import BasketDB from "../db/BasketDB";
-import { getCookie } from "../utils/helpers";
+import { cookieUtil } from "../utils/helpers";
 import useTransactionApi from "../hooks/useTransactionApi";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import Button from "./ui/Button";
@@ -24,7 +24,7 @@ export default function CheckoutForm() {
 
   // پر کردن فرم از کوکی
   useEffect(() => {
-    const json = getCookie("currentUser");
+    const json = cookieUtil.get("currentUser");
     if (!json) return;
     try {
       const user = JSON.parse(json);
@@ -85,7 +85,7 @@ export default function CheckoutForm() {
     }));
 
     const payload = { user: formData, items };
-    const token = getCookie("token") || "";
+    const token = cookieUtil.get("token") || "";
 
     try {
       const resp = await goToPayment(payload, token);

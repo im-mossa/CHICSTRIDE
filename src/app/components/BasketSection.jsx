@@ -1,8 +1,7 @@
-// src/components/BasketSection.jsx
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getCookie, setCookie } from "../utils/helpers";
+import { cookieUtil } from "../utils/helpers";
 import Button from "./ui/Button";
 
 export default function BasketSection() {
@@ -11,7 +10,7 @@ export default function BasketSection() {
 
   // Load basket from cookie on mount
   useEffect(() => {
-    const data = getCookie("basket");
+    const data = cookieUtil.get("basket");
     if (data) {
       try {
         const parsed = JSON.parse(data);
@@ -31,7 +30,7 @@ export default function BasketSection() {
   // Update cookie and state together
   const updateBasket = (newItems) => {
     setItems(newItems);
-    setCookie("basket", JSON.stringify(newItems), 30);
+    cookieUtil.set("basket", JSON.stringify(newItems), 30, { secure: true, sameSite: "Strict" });
   };
 
   const increaseQTY = (idx) => {
@@ -123,7 +122,7 @@ export default function BasketSection() {
       </div>
 
       {/* Mobile Cards */}
-      <div className="space-y-4 md:hidden  text-white dark:text-black">
+      <div className="space-y-4 md:hidden text-white dark:text-black">
         {items.map((itm, idx) => (
           <div
             key={idx}

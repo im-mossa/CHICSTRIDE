@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import useUserApi from "../hooks/useUserApi";
-import { setCookie } from "../utils/helpers";
+import { cookieUtil } from "../utils/helpers";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"; // 👈 آیکون‌ها
 import Button from "./ui/Button";
 
@@ -31,8 +31,8 @@ export default function LoginForm() {
     try {
       await login({ username, password }, (data) => {
         const user = data[0];
-        setCookie("currentUser", JSON.stringify(user), 5);
-        setCookie("token", user.token, 5);
+        cookieUtil.set("currentUser", JSON.stringify(user), 5, { secure: true, sameSite: "Strict" });
+        cookieUtil.set("token", user.token, 5, { secure: true, sameSite: "Strict" });
         Swal.fire({ icon: "success", title: "Welcome!" });
         router.push("/panel");
       });

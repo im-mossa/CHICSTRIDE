@@ -1,26 +1,42 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePanelApi } from "../hooks/usePanelApi";
-import { getCookie, logOutSystem } from "../utils/helpers";
+import { cookieUtil, navigationUtil } from "../utils/helpers";
 import Button from "./ui/Button";
 import Skeleton from "react-loading-skeleton";
 
 export default function PanelSection() {
+  const router = useRouter();
   const { getUserInfo } = usePanelApi();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const currentUserJson = getCookie("currentUser");
-    if (!currentUserJson) return;
-    const currentUser = JSON.parse(currentUserJson);
+    const currentUserJson = cookieUtil.get("currentUser");
 
-    getUserInfo(currentUser.token, (data) => {
-      setUser(data[0]?.customer ?? null);
-    });
-  }, [getUserInfo]);
+    // اگر کوکی currentUser موجود نبود، کاربر باید به لاگین ریدایرکت شود
+    if (!currentUserJson) {
+      navigationUtil.logout(router); // کوکی‌ها را هم پاک می‌کند
+      return;
+    }
 
-  // **حالت بارگذاری**: نمایش 5 اسکلتون کارت
+    try {
+      const currentUser = JSON.parse(currentUserJson);
+
+      if (currentUser?.token) {
+        getUserInfo(currentUser.token, (data) => {
+          setUser(data[0]?.customer ?? null);
+        });
+      } else {
+        navigationUtil.logout(router);
+      }
+    } catch (error) {
+      // اگر parsing کوکی شکست خورد، logout کنیم
+      navigationUtil.logout(router);
+    }
+  }, [getUserInfo, router]);
+
   if (!user) {
     return (
       <div className="px-4 py-6">
@@ -31,17 +47,15 @@ export default function PanelSection() {
               className="flex flex-col p-4 bg-white rounded-lg shadow"
             >
               <Skeleton height={16} width={100} className="mb-2" />
-              <Skeleton height={24} width={`80%`} />
+              <Skeleton height={24} width="80%" />
             </div>
           ))}
         </div>
 
-        {/* دکمه‌های پایین */}
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Skeleton height={50} width={150} />
-          <Skeleton height={50} width={150} />
-          <Skeleton height={50} width={150} />
-          <Skeleton height={50} width={150} />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} height={50} width={150} />
+          ))}
         </div>
       </div>
     );
@@ -70,12 +84,12 @@ export default function PanelSection() {
         ))}
       </div>
 
-      {/* دکمه‌های پایین */}
+      {/* دکمه‌ها */}
       <div className="flex flex-col sm:flex-row justify-center gap-4">
         <Button href="/editProfile">Edit Profile</Button>
         <Button href="/invoices">View My Invoices</Button>
         <Button href="/changePassword">Change Password</Button>
-        <Button onClick={logOutSystem}>Log Out</Button>
+        <Button onClick={() => navigationUtil.logout(router)}>Log Out</Button>
       </div>
     </div>
   );

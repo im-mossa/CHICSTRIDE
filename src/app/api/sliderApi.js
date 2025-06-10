@@ -1,16 +1,24 @@
-// src/api/SliderApi.js
+// app/api/SliderApi.js
 import { useBaseApi } from "./baseApi";
+import { useCallback } from "react";
 
 export default function useSliderApi() {
   const { getData } = useBaseApi();
 
-  const getAll = (onSuccess) => {
-    getData("slider", onSuccess);
-  };
+  // این فانکشن‌ها حالا فقط وقتی getData تغییر کنه دوباره ساخته می‌شن
+  const getAll = useCallback(
+    (onSuccess) => {
+      getData("slider", onSuccess);
+    },
+    [getData]
+  );
 
-  const getById = (id, onSuccess) => {
-    getData(`slider/${id}`, onSuccess);
-  };
+  const getById = useCallback(
+    (id, onSuccess) => {
+      getData(`slider/${id}`, onSuccess);
+    },
+    [getData]
+  );
 
   return { getAll, getById };
 }

@@ -1,10 +1,10 @@
 // src/db/BasketDB.js
-import { getCookie, setCookie } from "../utils/helpers";
+import { cookieUtil } from "../utils/helpers";
 
 export default class BasketDB {
     // Load basket array from cookie
     static load() {
-        const str = getCookie("basket");
+        const str = cookieUtil.get("basket");
         if (!str) return [];
         try {
             const arr = JSON.parse(str);
@@ -16,7 +16,7 @@ export default class BasketDB {
 
     // Save basket array to cookie
     static save(items) {
-        setCookie("basket", JSON.stringify(items), 30);
+        cookieUtil.set("basket", JSON.stringify(items), 30, { secure: true, sameSite: "Strict" });
     }
 
     // Add item to basket (or increment existing)

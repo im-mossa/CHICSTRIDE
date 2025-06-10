@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getCookie } from "../utils/helpers";
+import { cookieUtil } from "../utils/helpers";
 import { useInvoiceApi } from "@/app/hooks/useInvoiceApi";
 import Button from "@/app/components/ui/Button";
 
@@ -11,9 +11,9 @@ export default function InvoicesSection() {
   const pageSize = 10;
   const [isLastPage, setIsLastPage] = useState(false);
 
-  const token = getCookie("token");
+  const token = cookieUtil.get("token");
   // ابتدا رشتهٔ کوکی را دریافت می‌کنیم
-  const rawUser = getCookie("currentUser");
+  const rawUser = cookieUtil.get("currentUser");
   // سپس اگر مقداری برگشته، آن را JSON.parse می‌کنیم؛ در غیر این صورت، یک شیء خالی می‌سازیم
   const currentUser = rawUser ? JSON.parse(rawUser) : {};
   const userId = currentUser.customerId; // حالا userId به‌درستی خوانده خواهد شد

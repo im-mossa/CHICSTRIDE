@@ -2,13 +2,15 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation'
 import { usePathname } from "next/navigation";
 import { FaBars, FaTimes, FaShoppingCart, FaUser } from "react-icons/fa";
-import { checkUser } from "../utils/helpers";
+import { navigationUtil } from "../utils/helpers";
 import useLogoSrc from "../hooks/useLogoSrc";
 
 export default function MenuItems() {
+  const router = useRouter();
   const [menuState, setMenuState] = useState(false);
   const pathname = usePathname();
 
@@ -74,7 +76,7 @@ export default function MenuItems() {
           </Link>
         </li>
         <li>
-          <div className="hover:cursor-pointer" onClick={() => checkUser()}>
+          <div className="hover:cursor-pointer" onClick={() => navigationUtil.requireAuth(router)}>
             <FaUser className="text-[18px] absolute right-[60px] top-1/3 hover:scale-125 transition-transform" />
           </div>
         </li>

@@ -1,90 +1,116 @@
 // src/app/components/ChangePasswordForm.jsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
-import useUserApi from "@/app/hooks/useUserApi";
-import { getCookie, setCookie } from "@/app/utils/helpers";
-// ایمپورت آیکون‌ها از react-icons
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"; // 👈 آیکون‌ها
+import { cookieUtil, navigationUtil } from "../utils/helpers";
 import Button from "./ui/Button";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+
+const FIELDS = [
+  { label: "Current Password", name: "currentPassword" },
+  { label: "New Password", name: "newPassword" },
+];
 
 export default function ChangePasswordForm() {
   const router = useRouter();
-  const { changePassword } = useUserApi();
-
   const [username, setUsername] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "" });
+  const [show, setShow] = useState({ current: false, new: false });
   const [loading, setLoading] = useState(false);
 
+  // Load username once on mount
   useEffect(() => {
-    const json = getCookie("currentUser");
-    if (!json) {
+    const raw = cookieUtil.get("currentUser");
+    if (!raw) {
       Swal.fire({
         icon: "error",
-        title: "Not Logged In",
+        title: "Not logged in",
         text: "Please log in first.",
       }).then(() => router.push("/login"));
       return;
     }
     try {
-      const user = JSON.parse(json);
+      const user = JSON.parse(raw);
       setUsername(user.username);
     } catch {
       router.push("/login");
     }
   }, [router]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!currentPassword || !newPassword) {
-      Swal.fire({
-        icon: "error",
-        title: "Missing Fields",
-        text: "Please fill in both passwords.",
-      });
-      return;
-    }
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }, []);
 
-    const json = getCookie("currentUser");
-    const currentUser = JSON.parse(json);
-    const payload = {
-      ...currentUser,
-      oldPassword: currentPassword,
-      password: newPassword,
-      repeatPassword: newPassword,
-    };
+  const toggleShow = useCallback((field) => {
+    setShow((prev) => ({ ...prev, [field]: !prev[field] }));
+  }, []);
 
-    setLoading(true);
-    try {
-      await changePassword(payload, currentUser.token, (data) => {
-        if (!Array.isArray(data) || !data[0]) {
-          throw new Error("Empty response from server");
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      // Validate
+      if (!form.currentPassword || !form.newPassword) {
+        await Swal.fire({
+          icon: "error",
+          title: "Missing Fields",
+          text: "Please fill in both fields.",
+        });
+        return;
+      }
+
+      const raw = cookieUtil.get("currentUser");
+      if (!raw) return router.push("/login");
+      const user = JSON.parse(raw);
+
+      setLoading(true);
+      try {
+        const res = await fetch("/api/user/changePassword", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+          body: JSON.stringify({
+            oldPassword: form.currentPassword,
+            password: form.newPassword,
+            repeatPassword: form.newPassword,
+            id: user.id,
+            customerId: user.customerId,
+          }),
+        });
+
+        const result = await res.json();
+        if (res.ok && result.status === "OK") {
+          await Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: "Password changed successfully.",
+          });
+          navigationUtil.logout(router);
+        } else {
+          await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: result.message || `HTTP ${res.status}`,
+          });
         }
-        const updated = data[0];
-        setCookie("currentUser", JSON.stringify(updated), 5);
-        setCookie("token", updated.token, 5);
-        Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: "Your password has been changed.",
-        }).then(() => router.push("/login"));
-      });
-    } catch (error) {
-      console.error("Change password error:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error?.message || "Error on getting information from server!",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (err) {
+        console.error("ChangePasswordForm Error:", err);
+        await Swal.fire({
+          icon: "error",
+          title: "Network Error",
+          text: err.message,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [form, router]
+  );
 
   return (
     <div className="max-w-md mx-auto p-6 my-6 bg-white rounded-lg shadow">
@@ -106,68 +132,46 @@ export default function ChangePasswordForm() {
           />
         </div>
 
-        {/* Current Password */}
-        <div className="relative">
-          <label
-            htmlFor="currentPassword"
-            className="block mb-1 text-sm font-medium text-gray-700"
-          >
-            Current Password
-          </label>
-          <input
-            id="currentPassword"
-            type={showCurrent ? "text" : "password"}
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            className="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowCurrent((v) => !v)}
-            className="absolute inset-y-0 right-2 top-6 flex items-center text-gray-600 hover:text-black"
-            tabIndex={-1}
-          >
-            {showCurrent ? (
-              <AiOutlineEyeInvisible size={20} />
-            ) : (
-              <AiOutlineEye size={20} />
-            )}
-          </button>
-        </div>
-
-        {/* New Password */}
-        <div className="relative">
-          <label
-            htmlFor="newPassword"
-            className="block mb-1 text-sm font-medium text-gray-700"
-          >
-            New Password
-          </label>
-          <input
-            id="newPassword"
-            type={showNew ? "text" : "password"}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            className="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowNew((v) => !v)}
-            className="absolute inset-y-0 right-2 top-6 flex items-center text-gray-600 hover:text-black"
-            tabIndex={-1}
-          >
-            {showNew ? (
-              <AiOutlineEyeInvisible size={20} />
-            ) : (
-              <AiOutlineEye size={20} />
-            )}
-          </button>
-        </div>
+        {FIELDS.map(({ label, name }) => (
+          <div key={name} className="relative">
+            <label
+              htmlFor={name}
+              className="block mb-1 text-sm font-medium text-gray-700"
+            >
+              {label}
+            </label>
+            <input
+              id={name}
+              name={name}
+              type={
+                show[name === "currentPassword" ? "current" : "new"]
+                  ? "text"
+                  : "password"
+              }
+              value={form[name]}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring pr-10"
+            />
+            <button
+              type="button"
+              onClick={() =>
+                toggleShow(name === "currentPassword" ? "current" : "new")
+              }
+              className="absolute inset-y-0 right-2 top-6 flex items-center"
+              tabIndex={-1}
+            >
+              {show[name === "currentPassword" ? "current" : "new"] ? (
+                <AiOutlineEyeInvisible size={20} />
+              ) : (
+                <AiOutlineEye size={20} />
+              )}
+            </button>
+          </div>
+        ))}
 
         <Button type="submit" disabled={loading}>
-          {loading ? "Loading" : "Submit"}
+          {loading ? "Loading..." : "Submit"}
         </Button>
       </form>
     </div>
