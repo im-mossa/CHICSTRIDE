@@ -1,37 +1,38 @@
 // src/app/api/user/changePassword/route.js
 import { NextResponse } from "next/server";
 
-// این فایل *سروری* است، نیازی به "use client" ندارد.
+const API_URL = "https://onlineshop.holosen.net/api/user/changePassword";
 
 export async function PUT(request) {
     try {
-        const body = await request.json();
-        // Authorization header را از درخواست کلاینت بردار
-        const auth = request.headers.get("authorization") || "";
+        // بدنه‌ی JSON را بخوان
+        const payload = await request.json();
 
-        // حالا به سرور Holosen فچ می‌زنیم (بدون هدر Origin)
-        const res = await fetch(
-            "https://onlineshop.holosen.net/api/user/changePassword",
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: auth,
-                },
-                body: JSON.stringify(body),
-            }
-        );
+        // هدر Authorization را از کلاینت بگیر
+        const authHeader = request.headers.get("authorization") ?? "";
 
-        const data = await res.json();
-        // وضعیت HTTP را پاس می‌دهیم تا کلاینت بفهمد
+        // درخواست به API خارجی
+        const apiResponse = await fetch(API_URL, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: authHeader,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        // پاسخ API را به JSON تبدیل کن
+        const { status: apiStatus, data, message } = await apiResponse.json();
+
+        // نتیجه را با همان کد وضعیت HTTP برگردان
         return NextResponse.json(
-            { status: data.status, data: data.data, message: data.message },
-            { status: res.status }
+            { status: apiStatus, data, message },
+            { status: apiResponse.status }
         );
-    } catch (err) {
-        console.error("Proxy changePassword error:", err);
+    } catch (error) {
+        console.error("Proxy changePassword error:", error);
         return NextResponse.json(
-            { status: "ERROR", message: err.message || "Server error" },
+            { status: "ERROR", message: error.message ?? "Server error" },
             { status: 500 }
         );
     }
