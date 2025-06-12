@@ -1,89 +1,131 @@
-// src/app/components/CheckoutForm.jsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import BasketDB from "../db/BasketDB";
-import { cookieUtil } from "../utils/helpers";
+import { useRouter } from "next/navigation";
+import { cookieUtil, navigationUtil } from "../utils/helpers";
 import useTransactionApi from "../hooks/useTransactionApi";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import Button from "./ui/Button";
 
-export default function CheckoutForm() {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    username: "",
-    password: "",
-    phone: "",
-    postalCode: "",
-    address: "",
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const { goToPayment } = useTransactionApi(); // ⚠️ هوک را اینجا صدا می‌زنیم
+// مقدار اولیه فرم
+const initialForm = {
+  firstName: "",
+  lastName: "",
+  username: "",
+  password: "",
+  phone: "",
+  postalCode: "",
+  address: "",
+  // برای سازگاری با backend، فیلدهای پسورد قدیمی را داشته باشیم اما در validation نادیده بگیریم
+  oldPassword: "",
+  repeatPassword: "",
+};
 
-  // پر کردن فرم از کوکی
+// پیکربندی فیلدها برای رندر داینامیک
+const fields = [
+  { label: "First Name", name: "firstName" },
+  { label: "Last Name", name: "lastName" },
+  { label: "User Name", name: "username" },
+  { label: "Password", name: "password", type: "password" },
+  { label: "Phone", name: "phone" },
+  { label: "Postal Code", name: "postalCode" },
+  { label: "Address", name: "address" },
+];
+
+export default function CheckoutForm() {
+  const router = useRouter();
+  const [formData, setFormData] = useState(initialForm);
+  const [showPassword, setShowPassword] = useState(false);
+  const { goToPayment } = useTransactionApi();
+
+  // بارگذاری اطلاعات کاربر از کوکی
   useEffect(() => {
     const json = cookieUtil.get("currentUser");
-    if (!json) return;
+    if (!json) {
+      Swal.fire({
+        icon: "error",
+        title: "Not logged in",
+        text: "Please log in first.",
+      }).then(navigationUtil.logout(router));
+      return;
+    }
     try {
       const user = JSON.parse(json);
-      setFormData((p) => ({
-        ...p,
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        username: user.username || "",
-        phone: user.phone || "",
-        postalCode: user.postalCode || "",
-        address: user.address || "",
-      }));
+      setFormData((prev) => ({ ...prev, ...user }));
     } catch {
-      // اگر کوکی خراب بود
+      console.warn("Invalid currentUser cookie");
+      navigationUtil.logout(router); // کوکی‌ها را هم پاک می‌کند
     }
   }, []);
 
-  const handleChange = (e) => {
+  // هندل تغییر فیلدها
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-  };
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleGoToPayment = async () => {
-    // اعتبارسنجی
-    const allFilled = Object.values(formData).every((v) => v.trim() !== "");
-    if (!allFilled) {
+  // آماده‌سازی آیتم‌های سبد خرید
+  const buildItems = useCallback(() => {
+    const basketList = BasketDB.load() || [];
+    return basketList.map(
+      ({
+        id,
+        title,
+        image,
+        price,
+        qty,
+        colorId,
+        colorTitle,
+        colorHex,
+        sizeId,
+        sizeTitle,
+      }) => ({
+        id,
+        product: {
+          id,
+          title,
+          image,
+          description: "",
+          addDate: "",
+          visitCount: 0,
+          price,
+          category: { id: 0, title: "", image: "" },
+          colors: [
+            { id: colorId, title: colorTitle || "", hexValue: colorHex || "" },
+          ],
+          sizes: [{ id: sizeId, title: sizeTitle || "" }],
+        },
+        quantity: qty,
+        unitPrice: price,
+      })
+    );
+  }, []);
+
+  // ارسال به پرداخت
+  const handleGoToPayment = useCallback(async () => {
+    // اعتبارسنجی: فقط فیلدهای نمایش‌داده‌شده را چک کنیم
+    const visibleFieldNames = fields.map((f) => f.name);
+    const missing = visibleFieldNames.filter((name) => {
+      const v = formData[name];
+      const str = v == null ? "" : String(v).trim();
+      return str === "";
+    });
+
+    if (missing.length > 0) {
+      const labels = missing.map(
+        (name) => fields.find((f) => f.name === name)?.label || name
+      );
       return Swal.fire({
         icon: "error",
-        title: "Oops...",
-        text: "Please fill in all fields",
+        title: "Fields Missing",
+        text: `Please fill in: ${labels.join(", ")}`,
       });
     }
 
-    // آماده‌سازی آیتم‌های سبد
-    const basketList = BasketDB.load() || [];
-    const items = basketList.map((b) => ({
-      id: b.id,
-      product: {
-        id: b.id,
-        title: b.title || "string",
-        image: b.image || "string",
-        description: "string",
-        addDate: "string",
-        visitCount: 0,
-        price: b.price || 0,
-        category: { id: 0, title: "string", image: "string" },
-        colors: [
-          {
-            id: b.colorId,
-            title: b.colorTitle?.trim() || "string",
-            hexValue: b.colorHex || "string",
-          },
-        ],
-        sizes: [{ id: b.sizeId, title: b.sizeTitle || "string" }],
-      },
-      quantity: b.qty,
-      unitPrice: b.price,
-    }));
-
+    // آماده‌سازی داده‌ها
+    const items = buildItems();
     const payload = { user: formData, items };
     const token = cookieUtil.get("token") || "";
 
@@ -102,21 +144,13 @@ export default function CheckoutForm() {
         text: err.message || "The payment was unsuccessful.",
       });
     }
-  };
+  }, [formData, buildItems, goToPayment]);
 
   return (
     <section className="max-w-md mx-auto my-6 p-6 bg-white rounded-lg shadow">
       <h2 className="text-2xl font-bold text-center mb-6">Check Out</h2>
       <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-        {[
-          { label: "First Name", name: "firstName" },
-          { label: "Last Name", name: "lastName" },
-          { label: "User Name", name: "username" },
-          { label: "Password", name: "password", type: "password" },
-          { label: "Phone", name: "phone" },
-          { label: "Postal Code", name: "postalCode" },
-          { label: "Address", name: "address" },
-        ].map(({ label, name, type = "text" }) => (
+        {fields.map(({ label, name, type = "text" }) => (
           <div key={name} className="flex flex-col">
             <label htmlFor={name} className="mb-1">
               {label}
@@ -134,7 +168,7 @@ export default function CheckoutForm() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-2 top-1 flex items-center text-gray-600 hover:text-black"
                   tabIndex={-1}
                 >
@@ -158,7 +192,6 @@ export default function CheckoutForm() {
             )}
           </div>
         ))}
-
         <Button type="button" onClick={handleGoToPayment}>
           Go To Payment
         </Button>

@@ -1,14 +1,14 @@
+// app/components/BasketSection.jsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { cookieUtil } from "../utils/helpers";
 import Button from "./ui/Button";
 
 export default function BasketSection() {
   const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
 
-  // Load basket from cookie on mount
+  // بارگذاری سبد از کوکی هنگام mount
   useEffect(() => {
     const data = cookieUtil.get("basket");
     if (data) {
@@ -21,31 +21,40 @@ export default function BasketSection() {
     }
   }, []);
 
-  // Recalculate total whenever items change
-  useEffect(() => {
-    const sum = items.reduce((acc, itm) => acc + itm.qty * itm.price, 0);
-    setTotal(sum);
-  }, [items]);
+  // محاسبه مجموع قیمت با useMemo
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + item.qty * item.price, 0),
+    [items]
+  );
 
-  // Update cookie and state together
-  const updateBasket = (newItems) => {
+  // بروزرسانی سبد در state و کوکی
+  const updateBasket = useCallback((newItems) => {
     setItems(newItems);
-    cookieUtil.set("basket", JSON.stringify(newItems), 30, { secure: true, sameSite: "Strict" });
-  };
+    cookieUtil.set("basket", JSON.stringify(newItems), 30, {
+      secure: true,
+      sameSite: "Strict",
+    });
+  }, []);
 
-  const increaseQTY = (idx) => {
-    const newItems = [...items];
-    newItems[idx].qty++;
-    updateBasket(newItems);
-  };
+  const increaseQTY = useCallback(
+    (idx) =>
+      updateBasket(
+        items.map((itm, i) => (i === idx ? { ...itm, qty: itm.qty + 1 } : itm))
+      ),
+    [items, updateBasket]
+  );
 
-  const decreaseQTY = (idx) => {
-    const newItems = [...items];
-    newItems[idx].qty--;
-    if (newItems[idx].qty <= 0) newItems.splice(idx, 1);
-    updateBasket(newItems);
-  };
+  const decreaseQTY = useCallback(
+    (idx) =>
+      updateBasket(
+        items
+          .map((itm, i) => (i === idx ? { ...itm, qty: itm.qty - 1 } : itm))
+          .filter((itm) => itm.qty > 0)
+      ),
+    [items, updateBasket]
+  );
 
+  // اگر سبد خالی باشد
   if (items.length === 0) {
     return (
       <section className="p-6 text-center">
@@ -63,7 +72,7 @@ export default function BasketSection() {
         Basket <i className="fa fa-shopping-cart"></i>
       </h2>
 
-      {/* Desktop Table */}
+      {/* جدول دسکتاپ */}
       <div className="hidden md:block">
         <table className="w-full table-auto border-collapse mb-6 text-black">
           <thead>
@@ -121,13 +130,14 @@ export default function BasketSection() {
         </table>
       </div>
 
-      {/* Mobile Cards */}
-      <div className="space-y-4 md:hidden text-white dark:text-black">
+      {/* کارت موبایل */}
+      <div className="md:hidden space-y-4 text-black">
         {items.map((itm, idx) => (
           <div
             key={idx}
-            className={`flex flex-col sm:flex-row items-center p-4 rounded-lg shadow transition-colors duration-200
-              ${idx % 2 === 0 ? "bg-white" : "bg-gray-200"}`}
+            className={`flex flex-col sm:flex-row items-center p-4 rounded-lg shadow ${
+              idx % 2 === 0 ? "bg-white" : "bg-gray-200"
+            }`}
           >
             <img
               src={itm.image}
@@ -169,7 +179,6 @@ export default function BasketSection() {
       <div className="text-right text-xl font-bold py-4">
         Total: {total} IRR
       </div>
-
       <div className="text-center py-4">
         <Button href="/checkOut">Proceed To Payment</Button>
       </div>
