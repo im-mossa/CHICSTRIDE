@@ -1,47 +1,50 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePanelApi } from "../hooks/usePanelApi";
 import { cookieUtil, navigationUtil } from "../utils/helpers";
 import Button from "./ui/Button";
 import Skeleton from "react-loading-skeleton";
 
-export default function PanelSection() {
+// تنظیمات اسکلتون
+const SKELETON_COUNT_USER = 5;
+const SKELETON_COUNT_BUTTONS = 4;
+
+const PanelSection = () => {
   const router = useRouter();
   const { getUserInfo } = usePanelApi();
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
+  const fetchUser = useCallback(() => {
     const currentUserJson = cookieUtil.get("currentUser");
-
-    // اگر کوکی currentUser موجود نبود، کاربر باید به لاگین ریدایرکت شود
     if (!currentUserJson) {
-      navigationUtil.logout(router); // کوکی‌ها را هم پاک می‌کند
+      navigationUtil.logout(router);
       return;
     }
 
     try {
-      const currentUser = JSON.parse(currentUserJson);
-
-      if (currentUser?.token) {
-        getUserInfo(currentUser.token, (data) => {
-          setUser(data[0]?.customer ?? null);
-        });
+      const { token } = JSON.parse(currentUserJson) || {};
+      if (token) {
+        getUserInfo(token, (data) => setUser(data[0]?.customer ?? null));
       } else {
         navigationUtil.logout(router);
       }
-    } catch (error) {
-      // اگر parsing کوکی شکست خورد، logout کنیم
+    } catch {
       navigationUtil.logout(router);
     }
   }, [getUserInfo, router]);
 
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
+
+  // نمایش اسکلتون تا زمانی که کاربر لود نشده
   if (!user) {
     return (
       <div className="px-4 py-6">
         <div className="grid gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: SKELETON_COUNT_USER }).map((_, i) => (
             <div
               key={i}
               className="flex flex-col p-4 bg-white rounded-lg shadow"
@@ -51,9 +54,8 @@ export default function PanelSection() {
             </div>
           ))}
         </div>
-
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: SKELETON_COUNT_BUTTONS }).map((_, i) => (
             <Skeleton key={i} height={50} width={150} />
           ))}
         </div>
@@ -61,7 +63,8 @@ export default function PanelSection() {
     );
   }
 
-  const cards = [
+  // کارت‌های اطلاعات کاربر
+  const infoCards = [
     { label: "First Name", value: user.firstName },
     { label: "Last Name", value: user.lastName },
     { label: "Phone", value: user.phone },
@@ -71,9 +74,8 @@ export default function PanelSection() {
 
   return (
     <div className="px-4 py-6">
-      {/* کارت‌های اطلاعات کاربر */}
       <div className="grid gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(({ label, value }) => (
+        {infoCards.map(({ label, value }) => (
           <div
             key={label}
             className="flex flex-col p-4 bg-white rounded-lg shadow hover:shadow-md transition"
@@ -83,8 +85,6 @@ export default function PanelSection() {
           </div>
         ))}
       </div>
-
-      {/* دکمه‌ها */}
       <div className="flex flex-col sm:flex-row justify-center gap-4">
         <Button href="/editProfile">Edit Profile</Button>
         <Button href="/invoices">View My Invoices</Button>
@@ -93,4 +93,6 @@ export default function PanelSection() {
       </div>
     </div>
   );
-}
+};
+
+export default memo(PanelSection);

@@ -33,10 +33,22 @@ export default function BlogSection() {
             {[...Array(1)].map((_, idx) => (
               <div
                 key={idx}
-                className="flex-shrink-0 w-[160px] sm:w-[180px] md:w-[205px] h-[250px] rounded-[15px] shadow-md hover:shadow-lg hover:scale-105 transition"
+                className="
+                              flex-shrink-0 w-[160px] sm:w-[180px] md:w-[205px] h-[250px] relative overflow-hidden
+                      rounded-[15px] shadow-[1px_1px_5px_0_#bbb]
+                      transition-all duration-300 ease-in-out
+                      hover:shadow-[1px_1px_5px_0_#000] hover:scale-[1.03]
+                            "
               >
-                <Skeleton className="w-full h-[200px]" />
-                <div className="px-2 py-2 text-center">
+                <Skeleton
+                  className="w-full h-[200px]"
+                  containerClassName="block leading-none align-top"
+                  style={{
+                    borderBottomLeftRadius: 0,
+                    borderBottomRightRadius: 0,
+                  }}
+                />
+                <div className="px-2 py-2 text-center h-full footer-section">
                   <Skeleton width="80%" height={20} />
                 </div>
               </div>

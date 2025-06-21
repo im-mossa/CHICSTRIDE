@@ -1,44 +1,51 @@
-// src/components/ItemSection.jsx
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import Link from "next/link";
 
 /**
- * @param id          شناسه‌ی آیتم
- * @param title       عنوان آیتم
- * @param image       آدرس تصویر
- * @param [href]      مسیر مقصد (اگر پاس داده نشود /showProduct?id=... استفاده می‌شود)
+ * کامپوننت نمایش یک آیتم دسته‌بندی یا محصول
+ *
+ * @param {{
+ *   id: number | string,
+ *   title: string,
+ *   image: string,
+ *   href?: string,
+ * }} props
  */
-export default function ItemSection({ id, title, image, href }) {
-  // اگر prop.href پاس نشده، پیش‌فرض به ShowProduct با کوئری id برو
-  const link = href ?? `/showProduct/${id}`;
+const ItemSection = ({ id, title, image, href }) => {
+  // اگر مسیر به کامپوننت پاس نشده، به مسیر پیش‌فرض برو
+  const linkPath = href ?? `/showProduct/${id}`;
 
   return (
     <div
       className="
-        flex-shrink-0 w-[160px] sm:w-[180px] md:w-[205px] h-[250px] relative overflow-hidden
-        rounded-[15px] shadow-[1px_1px_5px_0_#bbb]
-        transition-all duration-300 ease-in-out
-        hover:shadow-[1px_1px_5px_0_#000] hover:scale-[1.03]
-      "
+      flex-shrink-0 w-[160px] sm:w-[180px] md:w-[205px] h-[250px]
+      relative overflow-hidden rounded-2xl shadow-lg
+      transition-transform duration-300 ease-in-out
+      hover:shadow-xl hover:scale-105
+    "
     >
-      <Link href={link} className="block w-full h-full">
+      <Link href={linkPath} className="block w-full h-full">
         <img
           src={image}
           alt={title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
         <h3
           className="
-            absolute bottom-0 left-0 w-full bg-black/50 text-white
-            text-[16px] sm:text-[18px] md:text-[20px] text-center
-            py-[10px] sm:py-[12px] md:py-[15px]
-          "
+          absolute bottom-0 left-0 w-full bg-black/50 text-white
+          text-base sm:text-lg md:text-xl text-center
+          py-2 sm:py-3 md:py-4
+        "
         >
           {title}
         </h3>
       </Link>
     </div>
   );
-}
+};
+
+// استفاده از React.memo برای جلوگیری از رندر اضافی
+export default memo(ItemSection);

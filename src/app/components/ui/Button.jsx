@@ -1,24 +1,28 @@
-// src/components/Button.jsx
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import Link from "next/link";
 
 const baseClasses = `
- text-center 
-  bg-[#333] text-white
-  py-[15px] px-[30px]
-  border-2 border-black
-  rounded-[10px]
-  shadow-[1px_1px_5px_0_#bbb]
-  transition-all duration-300 ease-in-out
-  cursor-pointer
-  hover:bg-black
-  active:bg-white active:text-black
+  text-center bg-[#333] text-white
+  py-3 px-6 border-2 border-black rounded-lg
+  shadow transition-all duration-300 ease-in-out
+  cursor-pointer hover:bg-black active:bg-white active:text-black
   disabled:opacity-50 disabled:cursor-not-allowed
 `;
 
-export default function Button({
+/**
+ * دکمه یا لینک کاربردی با استایل یکسان
+ *
+ * @param {object} props
+ * @param {string} [props.href]    مسیر لینک
+ * @param {() => void} [props.onClick]  هندلر کلیک
+ * @param {"button"|"submit"|"reset"} [props.type]  نوع دکمه
+ * @param {boolean} [props.disabled]
+ * @param {string} [props.className]   کلاس‌های اضافی
+ * @param {React.ReactNode} props.children
+ */
+const Button = ({
   href,
   onClick,
   type = "button",
@@ -26,19 +30,17 @@ export default function Button({
   className = "",
   children,
   ...props
-}) {
-  const classes = `${baseClasses} ${className}`;
+}) => {
+  const classes = `${baseClasses} ${className}`.trim();
 
   if (href) {
-    // اگر لینک باشه
     return (
-      <Link href={href} {...props} className={classes}>
+      <Link href={href} className={classes} {...props}>
         {children}
       </Link>
     );
   }
 
-  // دکمه‌ی معمولی
   return (
     <button
       type={type}
@@ -50,4 +52,6 @@ export default function Button({
       {children}
     </button>
   );
-}
+};
+
+export default memo(Button);
