@@ -1,6 +1,6 @@
 // src/hooks/useInvoiceApi.js
 import { useCallback } from "react";
-import { useBaseApi } from "../api/baseApi";
+import { useBaseApi } from "../../baseApi";
 
 /**
  * هوک برای عملیات مرتبط با تراکنش‌ها (پرداخت)
