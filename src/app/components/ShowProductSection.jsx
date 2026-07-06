@@ -144,7 +144,7 @@ export default function ShowProductSection({ slideId }) {
 
           {/* انتخاب سایز */}
           <div>
-            <h3 className="font-semibold mb-2">Size</h3>
+            <h3 className="font-semibold mb-2">Size </h3>
             <div className="flex flex-wrap gap-4">
               {product.sizes.map((s) => (
                 <button
